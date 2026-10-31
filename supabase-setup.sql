@@ -1,31 +1,35 @@
--- Run this in Supabase Dashboard > SQL Editor.
-create table if not exists public.posts (
-  id bigint generated always as identity primary key,
-  title text,
-  body text not null check (char_length(body) between 1 and 5000),
-  language text not null default 'en',
-  created_at timestamptz not null default now()
+
+CREATE TABLE IF NOT EXISTS public.posts (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    title TEXT,
+    body TEXT NOT NULL,
+    language TEXT DEFAULT 'en',
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-alter table public.posts enable row level security;
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
 
--- Public visitors can read posts and submit new posts without an account.
-create policy "Anyone can read posts"
-on public.posts for select
-to anon, authenticated
-using (true);
+DROP POLICY IF EXISTS "Anyone can read posts" ON public.posts;
+DROP POLICY IF EXISTS "Anyone can create posts" ON public.posts;
 
-create policy "Anyone can create posts"
-on public.posts for insert
-to anon, authenticated
-with check (
-  char_length(body) between 1 and 5000
-  and (title is null or char_length(title) <= 120)
-  and language in ('en','bn','es','fr','hi','ar')
+CREATE POLICY "Anyone can read posts"
+ON public.posts
+FOR SELECT
+TO anon, authenticated
+USING (true);
+
+CREATE POLICY "Anyone can create posts"
+ON public.posts
+FOR INSERT
+TO anon, authenticated
+WITH CHECK (
+    char_length(body) BETWEEN 1 AND 5000
 );
 
-grant select, insert on public.posts to anon, authenticated;
-grant usage, select on sequence public.posts_id_seq to anon, authenticated;
+GRANT SELECT, INSERT ON public.posts TO anon, authenticated;
 
--- Optional: basic index for newest-first feed
-create index if not exists posts_created_at_idx on public.posts (created_at desc);
+GRANT USAGE, SELECT
+ON SEQUENCE public.posts_id_seq
+TO anon, authenticated;
+
+NOTIFY pgrst, 'reload schema';
